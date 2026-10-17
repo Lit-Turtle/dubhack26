@@ -1,3 +1,9 @@
 -r requirements.txt
-ultralytics>=8.4.0
+# Platform notes:
+# - Intel Mac (x86_64): Python 3.12 only. Pin torch 2.2.2 — newer wheels are not on PyPI.
+# - Apple Silicon (arm64): Python 3.11–3.13. Leave torch unpinned; Ultralytics pulls a current wheel.
+# - Windows: Python 3.11 or 3.12. Leave torch unpinned.
+torch==2.2.2; sys_platform == "darwin" and platform_machine == "x86_64"
+torchvision==0.17.2; sys_platform == "darwin" and platform_machine == "x86_64"
 opencv-python>=4.10.0
+ultralytics>=8.4.0

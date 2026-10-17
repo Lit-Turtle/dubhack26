@@ -33,7 +33,7 @@ def _detect_sync(image_bytes: bytes) -> DetectionResponse:
     except ImportError:
         return DetectionResponse(
             detections=[],
-            message="YOLO is not installed. Run pip install -r requirements-yolo.txt (Python 3.11–3.13).",
+            message="YOLO is not installed. Use Python 3.12 on Intel Macs, then pip install -r requirements-yolo.txt.",
         )
     summary = YoloDetector.summarize(results)[0]
 

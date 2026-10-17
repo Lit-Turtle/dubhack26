@@ -16,6 +16,18 @@ FOOD_CLASS_NAMES = {
     "pizza",
     "sandwich",
 }
+MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
+
+
+def resolve_model_path(model_name: str) -> str:
+    """Prefer an explicit path, then backend/models/<name>, else the Ultralytics name."""
+    candidate = Path(model_name).expanduser()
+    if candidate.is_file():
+        return str(candidate.resolve())
+    local = MODELS_DIR / model_name
+    if local.is_file():
+        return str(local.resolve())
+    return model_name
 
 
 class YoloDetector:
@@ -24,7 +36,7 @@ class YoloDetector:
     def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
         from ultralytics import YOLO
 
-        self.model = YOLO(model_name)
+        self.model = YOLO(resolve_model_path(model_name))
 
     def predict(
         self,

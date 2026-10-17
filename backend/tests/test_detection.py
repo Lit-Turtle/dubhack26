@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import detection as detection_module
-from app.services.yolo_detector import YoloDetector
+from app.services.yolo_detector import YoloDetector, resolve_model_path
 
 client = TestClient(app)
 
@@ -36,6 +36,13 @@ class _FakeResult:
     boxes = [_FakeBox()]
     path = ""
     save_dir = None
+
+
+def test_resolve_model_path_prefers_existing_file(tmp_path):
+    weights = tmp_path / "custom.pt"
+    weights.write_bytes(b"fake")
+    assert resolve_model_path(str(weights)) == str(weights.resolve())
+    assert resolve_model_path("yolo26n.pt") == "yolo26n.pt"
 
 
 def test_summarize_maps_boxes():
