@@ -15,7 +15,11 @@ DubHacks ’26 starter: confirm pantry ingredients and find meals with the least
 
 ## Run locally
 
-Use Python 3.11+ and Node.js 22. In one terminal:
+Install Python 3.11+, Node.js 22 (includes npm), and Git. Clone this repository or open your existing checkout.
+
+### macOS / Linux
+
+Starting from the repository root, run in one terminal:
 
 ```sh
 cd backend
@@ -37,7 +41,55 @@ npm run dev -- --port 5173 --strictPort
 
 Open http://localhost:5173. API documentation: http://localhost:8000/docs.
 
+### Windows / PowerShell
+
+Install Python 3.11+, Node.js 22, and Git for Windows, then reopen PowerShell so the commands are available. If you have not cloned the repository yet:
+
+```powershell
+git clone https://github.com/Lit-Turtle/dubhack26.git
+Set-Location .\dubhack26
+```
+
+If you already have the repository, open PowerShell in its root folder instead. Check your installations:
+
+```powershell
+py --version
+node --version
+npm.cmd --version
+```
+
+Start the backend from the repository root:
+
+```powershell
+Set-Location .\backend
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --env-file .env
+```
+
+If `py` is unavailable but `python --version` reports Python 3.11 or newer, use `python -m venv .venv` instead. These commands call the virtual environment's Python directly, so activation and execution-policy changes are unnecessary.
+
+Keep the backend running. Open a **second PowerShell terminal in the repository root** and start the frontend:
+
+```powershell
+Set-Location .\frontend
+npm.cmd install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm.cmd run dev -- --port 5173 --strictPort
+```
+
+Using `npm.cmd` avoids PowerShell blocking the `npm.ps1` wrapper. The environment-file commands preserve any existing API key or configuration.
+
+Open http://localhost:5173. API documentation: http://localhost:8000/docs. Stop either server with `Ctrl+C` in its terminal.
+
+To enable Backboard, edit `backend\.env` and follow [Enable Backboard recipes](#enable-backboard-recipes) below. After saving, stop and restart the backend with the same `python.exe -m uvicorn` command above.
+
 ## Verify
+
+### macOS / Linux
+
+Run each block from the repository root in a separate terminal:
 
 ```sh
 cd backend
@@ -48,6 +100,20 @@ python -m pytest
 ```sh
 cd frontend
 npm run build
+```
+
+### Windows / PowerShell
+
+Run each block from the repository root in a separate terminal:
+
+```powershell
+Set-Location .\backend
+.\.venv\Scripts\python.exe -m pytest
+```
+
+```powershell
+Set-Location .\frontend
+npm.cmd run build
 ```
 
 ## API
