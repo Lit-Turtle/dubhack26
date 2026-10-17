@@ -15,7 +15,7 @@ DubHacks ’26 starter: confirm pantry ingredients and find meals with the least
 
 ## Run locally
 
-Install Python 3.11+, Node.js 22 (includes npm), and Git. Clone this repository or open your existing checkout.
+Install Python 3.11–3.13 (YOLO/PyTorch wheels are not available on 3.14 yet), Node.js 22 (includes npm), and Git. Clone this repository or open your existing checkout.
 
 ### macOS / Linux
 
@@ -26,6 +26,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
+pip install -r requirements-yolo.txt
 cp .env.example .env
 uvicorn app.main:app --reload --env-file .env
 ```
@@ -64,6 +65,7 @@ Start the backend from the repository root:
 Set-Location .\backend
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+pip install -r requirements-yolo.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --env-file .env
 ```
@@ -119,7 +121,7 @@ npm.cmd run build
 ## API
 
 - `GET /health` — readiness check.
-- `POST /detect` — multipart `image` upload (JPEG/PNG/WebP, max 10 MB); currently returns no detections and an explicit placeholder message. MIME type and size are checked; decoding will belong in the detector.
+- `POST /detect` — multipart `image` upload (JPEG/PNG/WebP, max 10 MB); runs local YOLO26 inference and returns labels, confidence, and pixel bounding boxes. MIME type and size are checked before decode.
 - `POST /recipes` — JSON with `ingredients`, `max_minutes`, `servings`, `vegetarian`, and `exclusions`. Returns up to three recipes, required quantities, pantry matches, missing ingredients, and steps.
 
 Example request:
@@ -130,7 +132,7 @@ Example request:
 
 ## Next integration steps
 
-1. Add YOLO inference to `detect_food`; return labels, confidence, and pixel bounding boxes. Add an image preview and box overlay to the UI. Do not infer weight or freshness.
+1. Add an image preview and box overlay to the UI. Tune `YOLO_MODEL`, `YOLO_CONF`, and `YOLO_IMGSZ` in `backend/.env` if needed. Do not infer weight or freshness.
 2. Configure Backboard as described below. Broaden ingredient aliases and dietary validation before relying on generated recipes for strict dietary needs.
 3. Add ingredient aliases, richer dietary validation, pantry persistence, and favorites as needed.
 
@@ -148,7 +150,8 @@ BACKBOARD_MODEL=gpt-4o
 ```
 
 Restart the backend using `uvicorn app.main:app --reload --env-file .env`.
-Install updated dependencies with `pip install -r requirements-dev.txt` first.
+Install updated dependencies with `pip install -r requirements-dev.txt
+pip install -r requirements-yolo.txt` first.
 The provider/model defaults match Backboard's documented defaults. You can select a cheaper JSON-capable model from Backboard's model catalog and change both variables. Confirm its current price in Backboard before using it extensively.
 
 Each Find recipes request makes one Backboard REST call to `POST /threads/messages`, with JSON output requested, memory and web search disabled, and a fresh conversation. Requests time out after 60 seconds of read inactivity and are not retried automatically. Backboard may still bill a timed-out request. Pantry data is sent to Backboard; photos still use the local detection placeholder.

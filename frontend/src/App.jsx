@@ -49,7 +49,7 @@ export default function App() {
 
   return <main>
     <header><p className="eyebrow">PANTRYPLAY · STARTER</p><h1>Your ingredients. Tonight’s dinner.</h1><p>Confirm your pantry and find meals with less extra shopping.</p></header>
-    <section><h2>1. Your pantry</h2><p>Photo detection is a placeholder. Add or edit ingredients manually for now.</p>
+    <section><h2>1. Your pantry</h2><p>Upload a pantry photo for YOLO object detection, or add ingredients manually.</p>
       <label>Ingredient photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={busy} /></label>
       <ul className="pantry">{ingredients.map((ingredient, index) => <li key={index}>
         <input aria-label={`Ingredient ${index + 1}`} value={ingredient} disabled={busy} maxLength={80} onChange={event => { setIngredients(items => items.map((item, i) => i === index ? event.target.value : item)); setRecipes([]); }} />

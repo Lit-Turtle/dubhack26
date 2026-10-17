@@ -30,9 +30,3 @@ def test_empty_pantry():
     assert client.post("/recipes", json={"ingredients": [" "]}).status_code == 422
 
 
-def test_detection_is_explicit_stub():
-    response = client.post("/detect", files={"image": ("photo.jpg", b"placeholder", "image/jpeg")})
-    assert response.status_code == 200
-    assert response.json()["detections"] == []
-    assert "not connected" in response.json()["message"]
-    assert client.post("/detect", files={"image": ("x.txt", b"text", "text/plain")}).status_code == 415

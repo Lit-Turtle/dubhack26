@@ -2,6 +2,11 @@ node_modules/
 dist/
 .venv/
 __pycache__/
+*.py[cod]
 .pytest_cache/
+runs/
+*.pt
+*.onnx
+*.engine
 .env
 .DS_Store
