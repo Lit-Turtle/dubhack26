@@ -3,7 +3,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import DetectionResponse, RecipeRequest, RecipeResponse
 from app.services.detection import detect_food
-from app.services.recipes import suggest_recipes
+from app.services.backboard import generate_recipes
 
 app = FastAPI(title="PantryPlay API", version="0.1.0")
 app.add_middleware(
@@ -37,8 +37,4 @@ async def detect(image: UploadFile = File(...)):
 def recipes(request: RecipeRequest):
     if not request.ingredients:
         raise HTTPException(422, "Enter at least one ingredient")
-    matches = suggest_recipes(request)
-    return RecipeResponse(recipes=matches, message=(
-        f"Found {len(matches)} starter recipe(s), ranked by least extra shopping."
-        if matches else "No starter recipes match. Try adding ingredients or relaxing the filters."
-    ))
+    return generate_recipes(request)
