@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { detectIngredients, getRecipes } from './api';
+import Flipbook from './Flipbook';
 
 export default function App() {
   const [ingredients, setIngredients] = useState(['rice', 'egg', 'carrot', 'broccoli']);
@@ -9,6 +10,7 @@ export default function App() {
   const [vegetarian, setVegetarian] = useState(false);
   const [exclusions, setExclusions] = useState('');
   const [recipes, setRecipes] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -42,10 +44,13 @@ export default function App() {
         exclusions: exclusions.split(',').map(value => value.trim().toLowerCase()).filter(Boolean),
       });
       setRecipes(result.recipes);
+      setSelected(null);
       setNotice(result.message);
     } catch (error) { setNotice(error.message); }
     finally { setBusy(false); }
   }
+
+  if (selected) return <Flipbook recipe={selected} onBack={() => setSelected(null)} />;
 
   return <main>
     <header><p className="eyebrow">PANTRYPLAY · STARTER</p><h1>Your ingredients. Tonight’s dinner.</h1><p>Confirm your pantry and find meals with less extra shopping.</p></header>
@@ -66,9 +71,11 @@ export default function App() {
     </form></section>
     <p role="status">{notice}</p>
     <div className="recipes">{recipes.map(recipe => <article key={recipe.name}><h2>{recipe.name}</h2><p>{recipe.estimated_minutes} minutes · {recipe.servings} servings</p>
-      <p><strong>You have:</strong> {recipe.ingredients_used.join(', ') || 'None'}</p>
-      <p><strong>Shopping list:</strong> {recipe.missing_ingredients.join(', ') || 'Nothing extra!'}</p>
-      <details><summary>Ingredients and instructions</summary><ul>{recipe.ingredients.map(item => <li key={item.name}>{item.quantity} {item.unit} {item.name}</li>)}</ul><ol>{recipe.steps.map(step => <li key={step}>{step}</li>)}</ol></details>
+      <h3>Shopping list</h3>
+      {recipe.missing_ingredients.length
+        ? <ul className="shopping-list">{recipe.missing_ingredients.map(item => <li key={item}>{item}</li>)}</ul>
+        : <p className="shopping-empty">Nothing extra!</p>}
+      <button type="button" className="select-recipe" onClick={() => setSelected(recipe)}>Select</button>
     </article>)}</div>
     <footer>Starter recipes use exact ingredient names. Exclusions are a basic filter, not an allergy checker.</footer>
   </main>;
