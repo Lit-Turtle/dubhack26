@@ -11,6 +11,7 @@ export default function App() {
   const [recipes, setRecipes] = useState([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(null);
 
   function addIngredient(event) {
     event.preventDefault();
@@ -24,10 +25,17 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     setBusy(true); setNotice('');
+    const previewUrl = URL.createObjectURL(file);
+    setPreview(previous => {
+      if (previous?.url) URL.revokeObjectURL(previous.url);
+      return { url: previewUrl, name: file.name, detections: [], width: 0, height: 0 };
+    });
     try {
       const result = await detectIngredients(file);
-      setIngredients(previous => [...new Set([...previous, ...result.detections.map(item => item.label)])]);
+      const labels = [...new Set(result.detections.map(item => item.label))];
+      setIngredients(previous => [...new Set([...previous, ...labels])]);
       setRecipes([]);
+      setPreview(current => current ? { ...current, detections: result.detections } : current);
       setNotice(result.message);
     } catch (error) { setNotice(error.message); }
     finally { setBusy(false); event.target.value = ''; }
@@ -49,8 +57,18 @@ export default function App() {
 
   return <main>
     <header><p className="eyebrow">PANTRYPLAY · STARTER</p><h1>Your ingredients. Tonight’s dinner.</h1><p>Confirm your pantry and find meals with less extra shopping.</p></header>
-    <section><h2>1. Your pantry</h2><p>Upload a pantry photo for YOLO object detection, or add ingredients manually.</p>
+    <section><h2>1. Your pantry</h2><p>Upload a pantry photo for YOLO object detection, or add ingredients manually. The file picker clears after upload so you can choose another image; your photo stays below.</p>
       <label>Ingredient photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={busy} /></label>
+      {preview && <figure className="preview">
+        <div className="preview-frame">
+          <img src={preview.url} alt={preview.name} onLoad={event => setPreview(current => current ? { ...current, width: event.target.naturalWidth, height: event.target.naturalHeight } : current)} />
+          {preview.width > 0 && preview.detections.map((item, index) => {
+            const [x1, y1, x2, y2] = item.box;
+            return <span key={`${item.label}-${index}`} className="box" style={{ left: `${(x1 / preview.width) * 100}%`, top: `${(y1 / preview.height) * 100}%`, width: `${((x2 - x1) / preview.width) * 100}%`, height: `${((y2 - y1) / preview.height) * 100}%` }}>{item.label} {Math.round(item.confidence * 100)}%</span>;
+          })}
+        </div>
+        <figcaption>{preview.name}{busy ? ' · detecting…' : preview.detections.length ? ` · ${preview.detections.length} box(es)` : ''}</figcaption>
+      </figure>}
       <ul className="pantry">{ingredients.map((ingredient, index) => <li key={index}>
         <input aria-label={`Ingredient ${index + 1}`} value={ingredient} disabled={busy} maxLength={80} onChange={event => { setIngredients(items => items.map((item, i) => i === index ? event.target.value : item)); setRecipes([]); }} />
         <button type="button" disabled={busy} aria-label={`Remove ${ingredient}`} onClick={() => { setIngredients(items => items.filter((_, i) => i !== index)); setRecipes([]); }}>Remove</button>

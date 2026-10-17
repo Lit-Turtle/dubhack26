@@ -8,15 +8,22 @@ from functools import lru_cache
 from PIL import Image, UnidentifiedImageError
 
 from app.schemas import Detection, DetectionResponse
-from app.services.yolo_detector import DEFAULT_MODEL, YoloDetector
+from app.services.yolo_detector import OPEN_VOCAB_MODEL, YoloDetector
 
 CONF_THRESHOLD = float(os.getenv("YOLO_CONF", "0.25"))
 IMGSZ = int(os.getenv("YOLO_IMGSZ", "640"))
 
 
+def _class_names() -> list[str] | None:
+    raw = os.getenv("YOLO_CLASSES", "").strip()
+    if not raw:
+        return None
+    return [name.strip() for name in raw.split(",") if name.strip()]
+
+
 @lru_cache(maxsize=1)
 def _detector() -> YoloDetector:
-    return YoloDetector(os.getenv("YOLO_MODEL", DEFAULT_MODEL))
+    return YoloDetector(os.getenv("YOLO_MODEL", OPEN_VOCAB_MODEL), class_names=_class_names())
 
 
 def _detect_sync(image_bytes: bytes) -> DetectionResponse:
@@ -49,6 +56,8 @@ def _detect_sync(image_bytes: bytes) -> DetectionResponse:
     if detections:
         labels = ", ".join(dict.fromkeys(d.label for d in detections))
         message = f"Detected {len(detections)} object(s): {labels}."
+        if set(labels.split(", ")) == {"food"}:
+            message += " best.pt only has the class food. Set YOLO_MODEL=yolov8s-worldv2.pt for names like grape and cheese."
     else:
         message = "No objects detected above the confidence threshold. Add ingredients manually."
 

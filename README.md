@@ -144,8 +144,10 @@ Core API tests run without YOLO. Live photo detection needs `requirements-yolo.t
 Confirm the stack after install:
 
 ```sh
-python -c "import torch, ultralytics; print(torch.__version__, ultralytics.__version__)"
+python -c "import numpy, torch, ultralytics; print(numpy.__version__, torch.__version__, ultralytics.__version__)"
 ```
+
+**Intel Mac:** if you see `Numpy is not available` or `_ARRAY_API not found`, downgrade NumPy: `pip install "numpy>=1.23,<2"`.
 
 ### CLI smoke test
 
@@ -160,6 +162,38 @@ python run_yolo.py --source https://ultralytics.com/images/bus.jpg --no-save
 ```
 
 The first run may download official weights such as `yolo26n.pt`. You should get JSON detections.
+
+### Test branch: named foods (`test/yolo-best-pt`)
+
+`backend/models/best.pt` is a **single-class** detector. Every box is labeled `food`. That is why grapes and cheese do not get names.
+
+This branch uses **Ultralytics YOLO-World** (`yolov8s-worldv2.pt`) for named pantry items. It is pretrained on a huge vocabulary; we prompt it with food names (grape, cheese, apple, …). You do not train it yourself.
+
+```sh
+git checkout test/yolo-best-pt
+```
+
+In `backend/.env`:
+
+```dotenv
+YOLO_MODEL=yolov8s-worldv2.pt
+# Optional extra names, comma-separated:
+# YOLO_CLASSES=grape,cheese,apple,banana,egg,rice
+```
+
+Restart uvicorn after changing `.env`. The first run downloads `yolov8s-worldv2.pt`. Upload a JPEG/PNG/WebP photo on http://localhost:5173. The file picker clears so you can choose another image; the photo and named boxes stay on the page.
+
+To use the old single-class weights instead:
+
+```dotenv
+YOLO_MODEL=best.pt
+```
+
+To fine-tune `best.pt` later (needs a dataset YAML with **named** classes, not just the `.pt`):
+
+```sh
+python train_yolo.py --model best.pt --data datasets/your.yaml --epochs 20
+```
 
 ### Use a custom `.pt`
 

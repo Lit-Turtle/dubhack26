@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import detection as detection_module
-from app.services.yolo_detector import YoloDetector, resolve_model_path
+from app.services.yolo_detector import YoloDetector, food_class_ids, resolve_model_path
 
 client = TestClient(app)
 
@@ -62,9 +62,62 @@ def test_predict_filters_to_food_classes():
 
     detector = YoloDetector.__new__(YoloDetector)
     detector.model = _FakeModel()
+    detector.open_vocab = False
 
     assert detector.predict("image.jpg", save=False) == ["result"]
     assert detector.model.kwargs["classes"] == [2, 3]
+
+
+def test_custom_food_model_is_not_silenced():
+    assert food_class_ids({0: "food"}) == [0]
+
+    class _FakeModel:
+        names = {0: "food"}
+
+        def predict(self, **kwargs):
+            self.kwargs = kwargs
+            return ["result"]
+
+    detector = YoloDetector.__new__(YoloDetector)
+    detector.model = _FakeModel()
+    detector.open_vocab = False
+    assert detector.predict("image.jpg", save=False) == ["result"]
+    assert detector.model.kwargs["classes"] == [0]
+
+
+def test_unknown_custom_classes_skip_coco_filter():
+    assert food_class_ids({0: "grape", 1: "cheese"}) is None
+
+    class _FakeModel:
+        names = {0: "grape", 1: "cheese"}
+
+        def predict(self, **kwargs):
+            self.kwargs = kwargs
+            return ["result"]
+
+    detector = YoloDetector.__new__(YoloDetector)
+    detector.model = _FakeModel()
+    detector.open_vocab = False
+    assert detector.predict("image.jpg", save=False) == ["result"]
+    assert "classes" not in detector.model.kwargs
+
+
+def test_open_vocab_skips_coco_filter_and_uses_prompts():
+    class _FakeModel:
+        names = {0: "grape", 1: "cheese"}
+
+        def predict(self, **kwargs):
+            self.kwargs = kwargs
+            return ["result"]
+
+        def set_classes(self, names):
+            self.names = {index: name for index, name in enumerate(names)}
+
+    detector = YoloDetector.__new__(YoloDetector)
+    detector.model = _FakeModel()
+    detector.open_vocab = True
+    assert detector.predict("image.jpg", save=False) == ["result"]
+    assert "classes" not in detector.model.kwargs
 
 
 def test_detect_endpoint_with_mocked_yolo(monkeypatch):
