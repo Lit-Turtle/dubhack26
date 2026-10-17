@@ -1,0 +1,121 @@
+[
+  {
+    "name": "Vegetable Fried Rice",
+    "estimated_minutes": 15,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "rice",
+        "quantity": 2,
+        "unit": "cups, cooked"
+      },
+      {
+        "name": "egg",
+        "quantity": 2,
+        "unit": ""
+      },
+      {
+        "name": "carrot",
+        "quantity": 1,
+        "unit": ""
+      },
+      {
+        "name": "broccoli",
+        "quantity": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "soy sauce",
+        "quantity": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "oil",
+        "quantity": 1,
+        "unit": "tbsp"
+      }
+    ],
+    "steps": [
+      "Dice the carrot and chop the broccoli into small pieces.",
+      "Heat the oil in a skillet over medium heat. Cook the vegetables until tender, about 5\u20137 minutes.",
+      "Push vegetables aside. Add beaten eggs and scramble until fully set.",
+      "Add cooked rice and soy sauce. Stir until everything is steaming hot and serve."
+    ]
+  },
+  {
+    "name": "Vegetable Omelet",
+    "estimated_minutes": 15,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "egg",
+        "quantity": 4,
+        "unit": ""
+      },
+      {
+        "name": "carrot",
+        "quantity": 1,
+        "unit": ""
+      },
+      {
+        "name": "broccoli",
+        "quantity": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "oil",
+        "quantity": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "salt",
+        "quantity": 0.25,
+        "unit": "tsp"
+      }
+    ],
+    "steps": [
+      "Grate the carrot and finely chop the broccoli.",
+      "Heat oil in a nonstick skillet. Cook the vegetables until tender, about 5 minutes.",
+      "Beat eggs with salt and pour over the vegetables.",
+      "Cook over medium-low heat until the eggs are fully set, folding to serve."
+    ]
+  },
+  {
+    "name": "Broccoli Rice Bowl",
+    "estimated_minutes": 20,
+    "vegetarian": true,
+    "ingredients": [
+      {
+        "name": "rice",
+        "quantity": 2,
+        "unit": "cups, cooked"
+      },
+      {
+        "name": "broccoli",
+        "quantity": 2,
+        "unit": "cups"
+      },
+      {
+        "name": "carrot",
+        "quantity": 1,
+        "unit": ""
+      },
+      {
+        "name": "oil",
+        "quantity": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "salt",
+        "quantity": 0.25,
+        "unit": "tsp"
+      }
+    ],
+    "steps": [
+      "Chop broccoli and thinly slice the carrot.",
+      "Heat oil in a skillet. Add vegetables and cook, stirring, until tender, about 8\u201310 minutes.",
+      "Add cooked rice and salt. Stir until steaming hot throughout.",
+      "Divide between bowls and serve."
+    ]
+  }
+]
