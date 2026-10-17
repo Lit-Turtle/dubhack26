@@ -4,6 +4,18 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_MODEL = "yolo26n.pt"
+FOOD_CLASS_NAMES = {
+    "apple",
+    "banana",
+    "broccoli",
+    "cake",
+    "carrot",
+    "donut",
+    "hot dog",
+    "orange",
+    "pizza",
+    "sandwich",
+}
 
 
 class YoloDetector:
@@ -23,12 +35,20 @@ class YoloDetector:
         show: bool = False,
         imgsz: int = 640,
     ) -> list[Any]:
+        names = self.model.names
+        name_items = names.items() if isinstance(names, dict) else enumerate(names)
+        food_classes = [
+            class_id
+            for class_id, name in name_items
+            if str(name).lower() in FOOD_CLASS_NAMES
+        ]
         return self.model.predict(
             source=source,
             conf=conf,
             save=save,
             show=show,
             imgsz=imgsz,
+            classes=food_classes,
             verbose=False,
         )
 

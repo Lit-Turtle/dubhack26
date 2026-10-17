@@ -45,6 +45,21 @@ def test_summarize_maps_boxes():
     ]
 
 
+def test_predict_filters_to_food_classes():
+    class _FakeModel:
+        names = {0: "person", 1: "table", 2: "banana", 3: "broccoli"}
+
+        def predict(self, **kwargs):
+            self.kwargs = kwargs
+            return ["result"]
+
+    detector = YoloDetector.__new__(YoloDetector)
+    detector.model = _FakeModel()
+
+    assert detector.predict("image.jpg", save=False) == ["result"]
+    assert detector.model.kwargs["classes"] == [2, 3]
+
+
 def test_detect_endpoint_with_mocked_yolo(monkeypatch):
     detection_module._detector.cache_clear()
 
