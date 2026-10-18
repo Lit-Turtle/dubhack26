@@ -1,0 +1,176 @@
+path: /Users/canbo/dubhack26/backend/models/experiments/quick-food-20261017-214839/dataset
+train: images/train
+val: images/val
+names:
+  0: avocado
+  1: chicken
+  2: pork
+  3: yogurt
+  4: blueberry
+  5: flour
+  6: carrot
+  7: banana
+  8: ham
+  9: corn
+  10: cream
+  11: cheese
+  12: spinach
+  13: tomato
+  14: asparagus
+  15: garlic
+  16: radish
+  17: rib
+  18: lime
+  19: potato
+  20: lemon
+  21: meatball
+  22: cucumber
+  23: broccoli
+  24: chocolate
+  25: coconut
+  26: cauliflower
+  27: onion
+  28: chili
+  29: peach
+  30: bitter melon
+  31: beef
+  32: beans
+  33: milk
+  34: bread
+  35: salad
+  36: pineapple
+  37: hummus
+  38: bok choy
+  39: oil
+  40: mushroom
+  41: strawberry
+  42: butter
+  43: shrimp
+  44: sugar
+  45: egg
+  46: lettuce
+  47: sweet potato
+  48: apple
+  49: melon
+  50: orange
+  51: noodle
+  52: leek
+  53: eggplant
+  54: mango
+  55: mayonnaise
+  56: lobster tail
+  57: sausage
+  58: rice
+  59: pumpkin
+  60: cabbage
+  61: pea
+  62: ginger
+  63: tempeh
+  64: tofu
+  65: coffee
+  66: guacamole
+  67: pepper
+  68: fennel
+  69: pear
+  70: pawpaw
+  71: marmalade
+  72: bacon
+  73: cashew
+  74: oysters
+  75: kiwi
+  76: celery
+  77: sour cream
+  78: apricot
+  79: quark
+  80: peanut
+  81: liquor
+  82: juice
+  83: hash brown
+  84: fish
+  85: candy
+  86: cake
+  87: cookie
+  88: cake roll
+  89: salt
+  90: jam
+  91: tea
+  92: tortillas
+  93: dairy
+  94: biscuit
+  95: cherry
+  96: dates
+  97: grapefruit
+  98: grape
+  99: parsley
+  100: pickles
+  101: pomegranate
+  102: salami
+  103: watermelon
+  104: ketchup
+  105: mint
+  106: mustard
+  107: nuts
+  108: olive
+  109: pudding
+  110: smoothie
+  111: tangerine
+  112: turkey
+  113: tuna
+  114: fiddlehead ferns
+  115: artichoke
+  116: black lentils
+  117: sponge gourd
+  118: chickpeas
+  119: turnip
+  120: kimchi
+  121: soy sauce
+  122: lapsi
+  123: soyabean
+  124: palak
+  125: stinging nettle
+  126: masyaura
+  127: ash gourd
+  128: rayo ko saag
+  129: garden cress
+  130: jack fruit
+  131: bitter gourd
+  132: bottle gourd
+  133: gundruk
+  134: chayote
+  135: cinnamon
+  136: red lentils
+  137: coriander
+  138: green mint
+  139: moringa leaves
+  140: lamb
+  141: chili powder
+  142: paneer
+  143: okra
+  144: taro leaves
+  145: nutrela
+  146: snake gourd
+  147: palungo
+  148: green lentils
+  149: pointed gourd
+  150: beetroot
+  151: bamboo shoots
+  152: papaya
+  153: cassava
+  154: farsi ko munta
+  155: yellow lentils
+  156: cornflakes
+  157: tree tomato
+  158: rahar ko daal
+  159: taro root
+  160: beaten rice
+  161: bethu ko saag
+  162: broad beans
+  163: sajjyun
+  164: tori ko saag
+  165: crab meat
+  166: akabare khursani
+  167: seaweed
+  168: green soyabean
+  169: walnut
+  170: long beans
+  171: wheat
