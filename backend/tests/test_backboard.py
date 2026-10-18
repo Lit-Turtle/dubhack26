@@ -75,6 +75,20 @@ def test_extracts_list_or_fenced_json():
     assert backboard.validate_recipes(fenced, request)[0].name == 'Rice bowl'
 
 
+def test_accepts_plural_pantry_match_and_partial_use():
+    recipes = backboard.validate_recipes(
+        json.dumps({'recipes': [recipe(
+            ingredients=[
+                {'name': 'apples', 'quantity': 1, 'unit': ''},
+                {'name': 'honey', 'quantity': 1, 'unit': 'tsp'},
+            ],
+        )]}),
+        RecipeRequest(ingredients=['apple', 'banana'], vegetarian=True),
+    )
+    assert recipes[0].ingredients_used == ['apple']
+    assert recipes[0].missing_ingredients == ['honey']
+
+
 def test_keeps_valid_recipes_when_one_fails():
     recipes = backboard.validate_recipes(
         json.dumps({'recipes': [recipe(estimated_minutes=45), recipe(name='Good rice')]}),
@@ -92,7 +106,7 @@ def test_exclusions_are_checked():
 def test_http_failure_is_safe_and_falls_back(monkeypatch, status):
     mock_api(monkeypatch, lambda request: httpx.Response(status, text='sensitive-upstream-detail'))
     result = client.post('/recipes', json={'ingredients': ['rice']}).json()
-    assert 'sample recipe' in result['message']
+    assert 'from your pantry' in result['message']
     assert result['recipes']
     assert 'sensitive-upstream-detail' not in json.dumps(result)
     assert 'fake-test-key' not in json.dumps(result)
@@ -109,7 +123,17 @@ def test_http_failure_is_safe_and_falls_back(monkeypatch, status):
 def test_bad_upstream_response_falls_back(monkeypatch, payload):
     mock_api(monkeypatch, lambda request: httpx.Response(200, json=payload))
     result = client.post('/recipes', json={'ingredients': ['rice']}).json()
-    assert 'sample recipe' in result['message']
+    assert 'from your pantry' in result['message']
+
+
+def test_failed_status_is_used_when_content_is_valid(monkeypatch):
+    mock_api(monkeypatch, lambda request: httpx.Response(
+        200,
+        json={'status': 'FAILED', 'content': {'recipes': [recipe()]}},
+    ))
+    result = client.post('/recipes', json={'ingredients': ['rice']}).json()
+    assert 'generated with Backboard' in result['message']
+    assert result['recipes'][0]['name'] == 'Rice bowl'
 
 
 def test_timeout_is_not_retried(monkeypatch):
