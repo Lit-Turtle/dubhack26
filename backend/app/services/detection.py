@@ -5,23 +5,31 @@ import io
 import os
 from functools import lru_cache
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
+from fastapi import HTTPException
+from pathlib import Path
 
 from app.schemas import Detection, DetectionResponse
-from app.services.yolo_detector import DEFAULT_MODEL, YoloDetector
+from app.services.yolo_detector import DEFAULT_MODEL, YoloDetector, resolve_model_path
 
 CONF_THRESHOLD = float(os.getenv("YOLO_CONF", "0.25"))
-IMGSZ = int(os.getenv("YOLO_IMGSZ", "640"))
+IMGSZ = int(os.getenv("YOLO_IMGSZ", "416"))
 
 
 @lru_cache(maxsize=1)
 def _detector() -> YoloDetector:
-    return YoloDetector(os.getenv("YOLO_MODEL", DEFAULT_MODEL))
+    model_path = resolve_model_path(os.getenv("YOLO_MODEL", DEFAULT_MODEL))
+    if model_path.endswith('.onnx'):
+        from app.services.onnx_detector import OnnxDetector
+        if not Path(model_path).is_file():
+            raise FileNotFoundError(model_path)
+        return OnnxDetector(model_path)
+    return YoloDetector(model_path)
 
 
 def _detect_sync(image_bytes: bytes) -> DetectionResponse:
     try:
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
     except UnidentifiedImageError:
         return DetectionResponse(
             detections=[],
@@ -30,11 +38,8 @@ def _detect_sync(image_bytes: bytes) -> DetectionResponse:
 
     try:
         results = _detector().predict(image, conf=CONF_THRESHOLD, save=False, show=False, imgsz=IMGSZ)
-    except ImportError:
-        return DetectionResponse(
-            detections=[],
-            message="YOLO is not installed. Use Python 3.12 on Intel Macs, then pip install -r requirements-yolo.txt.",
-        )
+    except (ImportError, FileNotFoundError) as error:
+        raise HTTPException(503, "Ingredient detection is unavailable. Install backend requirements and include the configured model file.") from error
     summary = YoloDetector.summarize(results)[0]
 
     detections = [

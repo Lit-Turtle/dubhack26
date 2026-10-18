@@ -12,7 +12,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
+        default="food30/best.pt",
         help="Starting weights: filename in backend/models/, a path, or an official Ultralytics name",
     )
     parser.add_argument(

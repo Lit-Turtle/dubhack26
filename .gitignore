@@ -16,3 +16,11 @@ backend/datasets/
 *.engine
 .env
 .DS_Store
+
+# Generated training data and new experiment outputs
+backend/models/food30-runs/
+backend/models/experiments/
+backend/models/evaluations/
+
+!backend/models/food30/*.onnx
+!backend/models/food30/*.pt

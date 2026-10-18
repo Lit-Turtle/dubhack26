@@ -183,3 +183,94 @@ The backend validates quantities, required fields, servings, cooking time, exact
 Integration tests use mocked HTTP responses and spend no credits. A live call with your local key is still needed to verify your account/model access.
 
 API reference: https://docs.backboard.io/concepts/messages
+
+
+## Focused 30-ingredient training
+
+The retained full dataset is `backend/datasets/pantry-evaluation-77h3_knk/` (172 classes).
+The completed quick-trial candidate and results remain in
+`backend/models/experiments/quick-food-20261017-215150/`.
+Older source datasets and abandoned trials were moved outside the repository to
+`/Users/canbo/dubhack26-recovery-20261017-221124/`; its `manifest.json` records their original paths.
+This archive is local to the original Mac, not included in Git.
+
+The focused dataset includes onion, tomato, potato, carrot, broccoli, spinach,
+lettuce, cabbage, cucumber, pepper, garlic, mushroom, eggplant, corn, peas, eggs,
+chicken, beef, pork, flour, oil, cheese, milk, butter, rice, bread, apple, banana,
+lemon, and beans. These are a practical cooking list, not a statistical usage ranking.
+
+From `backend`, with the virtual environment active:
+
+```sh
+python train_food30.py --prepare-only
+python train_food30.py --prepared --hours 2 --target 0.8
+```
+
+Preparation refuses to overwrite an existing dataset. It preserves the original
+172-class dataset, filters invalid boxes, maps labels by class name, and removes
+exact duplicate image files across splits, giving test and validation priority.
+Near-duplicate photographs and prior exposure during the teammate's original
+training have not been ruled out. Every target class must have examples in each split.
+Training samples up to 150 images per class, keeping all selected ingredient boxes
+in each chosen image; shared images can increase individual class counts.
+
+The target is **AP50 >= 0.80 for every ingredient**, not an 80% average or a
+prediction-confidence threshold. Training stops on the validation target or the
+budget; the final selected checkpoint is then evaluated once on the test split.
+The two-hour limit includes final evaluation, with time reserved for it.
+An interrupted or timed-out run may have checkpoints but no final test results.
+No score is guaranteed, and the application model is never automatically replaced.
+Sparse test classes (especially oil) need additional independently labeled examples
+before their scores should be treated as reliable. The script reports classes with
+fewer than 20 test images; 20 is only a support warning threshold, not a guarantee.
+
+Find progress, per-class history, selected weights, and final results under
+`backend/models/food30-runs/<run>/`. Read `status.json` for the run state and
+`test_AP50` after completion. Dataset manifests and support counts are under
+`backend/datasets/food30/`. Generated data and checkpoints are ignored by Git;
+share weights separately if teammates need them.
+
+
+## Active detector and manual photo test
+
+The API now defaults to the completed **30-ingredient model**, bundled as
+`backend/models/food30/best.onnx`. The CPU inference runtime is included in
+`backend/requirements.txt`; production inference does not need PyTorch or
+Ultralytics. The matching `best.pt` is retained for further training. The original
+172-class checkpoint remains in `backend/models/runs/food/weights/best.pt`.
+The 30-class list does **not** include grapes. Empty detections are possible and
+manual ingredient entry remains necessary. Measured test results and class names
+are in `backend/models/food30/model-info.json`; this model did not reach 80% for all classes.
+
+From the repository root on macOS:
+
+```sh
+cd backend
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --env-file .env --port 8000
+```
+
+Set `YOLO_MODEL=food30/best.onnx` in `backend/.env`. Stop any old server with
+Ctrl+C before restarting so it reloads the environment and model.
+Open `http://localhost:8000/docs`, expand **POST /api/detect**, click **Try it out**,
+choose a JPEG/PNG/WebP, then **Execute**. A successful response includes a
+`detections` list with `label`, `confidence`, and `box`. An empty list with a
+no-detections message means inference ran but found nothing above the threshold.
+HTTP 503 means the model/runtime is unavailable.
+
+Alternatively, from another terminal:
+
+```sh
+curl http://localhost:8000/api/health
+curl -F 'image=@/absolute/path/to/photo.jpg' http://localhost:8000/api/detect
+```
+
+For the deployed website, use the same endpoints at
+`https://www.picadish.photo/api/health` and `https://www.picadish.photo/api/detect`.
+Use photos below 4 MB to fit the platform upload limit. Production Vite builds use
+`VITE_API_URL=/api`, and Vercel routes those requests to FastAPI. If a Vercel
+`YOLO_MODEL` environment override is configured, change it to
+`food30/best.onnx` and redeploy. Backend keys belong only in backend environment
+variables, never in `VITE_*` variables. Training data and experiment folders are
+excluded from deployment; the ONNX runtime model is included.

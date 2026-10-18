@@ -5,3 +5,9 @@ backend/datasets
 backend/yolo26n.pt
 backend/weights
 frontend/dist
+
+backend/models/experiments
+backend/models/food30-runs
+backend/models/evaluations
+backend/models/runs
+backend/models/food30/*.pt

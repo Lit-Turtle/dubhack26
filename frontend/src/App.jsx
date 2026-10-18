@@ -88,7 +88,7 @@ export default function App() {
   async function upload(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setBusy(true); setNotice('');
+    setBusy(true); setNotice('Analyzing your photo…');
     try {
       const result = await detectIngredients(file);
       setIngredients(previous => [...new Set([...previous, ...result.detections.map(item => item.label)])]);

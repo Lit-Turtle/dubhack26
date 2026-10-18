@@ -1,4 +1,4 @@
-"""Evaluate pantry-merged using the same ingredient-name normalization as training."""
+"""Evaluate the retained 172-class dataset or remap an imported source dataset."""
 import argparse
 from collections import Counter
 import json
@@ -26,7 +26,7 @@ def remap_labels(text, class_map):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--data',default='datasets/pantry-merged/dataset.yaml')
+    p.add_argument('--data',default='datasets/pantry-evaluation-77h3_knk/dataset.yaml')
     p.add_argument('--model',default='models/runs/food/weights/best.pt')
     p.add_argument('--split',choices=['val','test'],default='test')
     args=p.parse_args()
@@ -44,6 +44,14 @@ def main():
     if not source_root.is_absolute():source_root=(source.parent/source_root).resolve()
     source_names=config['names']
     if isinstance(source_names,list):source_names=dict(enumerate(source_names))
+    if {int(i): n for i, n in source_names.items()} == names:
+        result=model.val(data=str(source),split=args.split,device='cpu',batch=4,workers=0,
+                         imgsz=640,plots=True,project=str(Path('models/evaluations').resolve()),name='pantry-172')
+        destination=Path(result.save_dir)/'evaluation-summary.json'
+        destination.write_text(json.dumps({'source':str(source),'split':args.split,
+            'metrics':result.results_dict,'output_dir':str(result.save_dir)},indent=2)+'\n')
+        print('Evaluation summary:',destination,flush=True)
+        return
     class_map={}
     skipped=[]
     for old_id,name in source_names.items():
