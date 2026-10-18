@@ -4,10 +4,14 @@ dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-runs/
-backend/models/runs/
+/runs/
+backend/models/runs/**
+!backend/models/runs/food/
+!backend/models/runs/food/weights/
+!backend/models/runs/food/weights/best.pt
 backend/datasets/
 *.pt
+!backend/models/runs/food/weights/best.pt
 *.onnx
 *.engine
 .env
