@@ -63,7 +63,7 @@ function ChipGroup({ title, hint, options, selected, onToggle, multiple = true }
 }
 
 export default function App() {
-  const [ingredients, setIngredients] = useState(['rice', 'carrot']);
+  const [ingredients, setIngredients] = useState([]);
   const [draft, setDraft] = useState('');
   const [minutes, setMinutes] = useState(30);
   const [servings, setServings] = useState(2);
@@ -76,6 +76,8 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [detecting, setDetecting] = useState(false);
 
   function addIngredient(event) {
     event.preventDefault();
@@ -85,17 +87,38 @@ export default function App() {
     setRecipes([]);
   }
 
-  async function upload(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setBusy(true); setNotice('Analyzing your photo…');
+  async function uploadFile(file) {
+    if (!file || busy) return;
+    setBusy(true);
+    setDetecting(true);
+    setNotice('Analyzing your photo…');
+    const previewUrl = URL.createObjectURL(file);
+    setPreview(previous => {
+      if (previous?.url) URL.revokeObjectURL(previous.url);
+      return { url: previewUrl, name: file.name || 'pasted-photo', detections: [], width: 0, height: 0 };
+    });
     try {
       const result = await detectIngredients(file);
-      setIngredients(previous => [...new Set([...previous, ...result.detections.map(item => item.label)])]);
-      setRecipes([]);
+      const confirmed = result.detections.filter(item => !item.uncertain);
+      const labels = [...new Set(confirmed.map(item => item.label))];
+      setPreview(current => current ? { ...current, detections: confirmed } : current);
+      if (labels.length) {
+        setIngredients(previous => [...new Set([...previous, ...labels])]);
+        setRecipes([]);
+      }
       setNotice(result.message);
-    } catch (error) { setNotice(error.message); }
-    finally { setBusy(false); event.target.value = ''; }
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy(false);
+      setDetecting(false);
+    }
+  }
+
+  function imageFromClipboard(event) {
+    const items = [...(event.clipboardData?.items || [])];
+    const imageItem = items.find(item => item.type.startsWith('image/'));
+    return imageItem?.getAsFile() || [...(event.clipboardData?.files || [])].find(file => file.type.startsWith('image/'));
   }
 
   function addCustomPref(event) {
@@ -130,10 +153,29 @@ export default function App() {
 
   if (selected) return <Flipbook recipe={selected} onBack={() => setSelected(null)} />;
 
-  return <main>
+  return <main onPaste={event => { const file = imageFromClipboard(event); if (file) { event.preventDefault(); uploadFile(file); } }}>
     <header><p className="eyebrow">PIC A DISH</p><h1>Your ingredients. Tonight’s dinner.</h1><p>Confirm your pantry and find meals.</p></header>
-    <section><h2>1. Your pantry</h2><p>Upload a pantry photo, or add ingredients manually.</p>
-      <label>Ingredient photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} disabled={busy} /></label>
+    <section
+      className="drop-pantry"
+      onDragOver={event => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }}
+      onDrop={event => { event.preventDefault(); const file = [...event.dataTransfer.files].find(item => item.type.startsWith('image/')) || event.dataTransfer.files[0]; if (file) uploadFile(file); }}
+    >
+      <h2>1. Your pantry</h2>
+      <p>Upload, paste, or drop a pantry photo to see labeled boxes. The file picker clears so you can choose another image; your photo stays below.</p>
+      <label>Ingredient photo<input type="file" accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) uploadFile(file); }} disabled={busy} /></label>
+      {preview && <figure className="preview">
+        <div className="preview-frame">
+          <img src={preview.url} alt={preview.name} onLoad={event => setPreview(current => current ? { ...current, width: event.target.naturalWidth, height: event.target.naturalHeight } : current)} />
+          {preview.width > 0 && preview.detections.map((item, index) => {
+            const [x1, y1, x2, y2] = item.box;
+            return <span key={`${item.label}-${index}`} className={`box${item.uncertain ? ' uncertain' : ''}`} style={{ left: `${(x1 / preview.width) * 100}%`, top: `${(y1 / preview.height) * 100}%`, width: `${((x2 - x1) / preview.width) * 100}%`, height: `${((y2 - y1) / preview.height) * 100}%` }}>{item.uncertain ? 'Uncertain: ' : ''}{item.label} {Math.round(item.confidence * 100)}%</span>;
+          })}
+        </div>
+        <figcaption>{preview.name}{detecting ? ' · detecting…' : ` · ${preview.detections.length} box(es)`}</figcaption>
+      </figure>}
+      {notice ? <p className="photo-status" role="status">{notice}</p> : null}
+      <h3>Confirmed pantry</h3>
+      {ingredients.length === 0 && <p>Your pantry is empty. Upload a photo or add an ingredient below.</p>}
       <ul className="pantry">{ingredients.map((ingredient, index) => <li key={index}>
         <input aria-label={`Ingredient ${index + 1}`} value={ingredient} disabled={busy} maxLength={80} onChange={event => { setIngredients(items => items.map((item, i) => i === index ? event.target.value : item)); setRecipes([]); }} />
         <button type="button" disabled={busy} aria-label={`Remove ${ingredient}`} onClick={() => { setIngredients(items => items.filter((_, i) => i !== index)); setRecipes([]); }}>Remove</button>
@@ -170,7 +212,7 @@ export default function App() {
       </div>
       <button className="find-recipes" disabled={busy || !ingredients.some(item => item.trim())}>{busy ? 'Working…' : 'Find recipes'}</button>
     </form></section>
-    <p role="status">{notice}</p>
+    {notice && recipes.length ? <p className="photo-status">{notice}</p> : null}
     <div className="recipes">{recipes.map(recipe => <article key={recipe.name}><h2>{recipe.name}</h2><p>{recipe.estimated_minutes} minutes · {recipe.servings} servings</p>
       <h3>Shopping list</h3>
       {recipe.missing_ingredients.length

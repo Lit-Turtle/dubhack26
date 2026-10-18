@@ -1,9 +1,25 @@
 """CPU inference for the bundled YOLO model, without importing PyTorch."""
 import ast
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 from PIL import Image
+
+
+def _class_names(path, session):
+    raw = session.get_modelmeta().custom_metadata_map.get('names')
+    names = ast.literal_eval(raw) if raw else None
+    if isinstance(names, dict):
+        return {int(key): str(value) for key, value in names.items()}
+    if isinstance(names, (list, tuple)):
+        return {index: str(value) for index, value in enumerate(names)}
+    info = Path(path).with_name('model-info.json')
+    if info.is_file():
+        classes = json.loads(info.read_text()).get('classes') or []
+        return {index: str(value) for index, value in enumerate(classes)}
+    raise ValueError('ONNX model is missing class names')
 
 
 class OnnxDetector:
@@ -15,7 +31,7 @@ class OnnxDetector:
         self.session = ort.InferenceSession(str(path), sess_options=options, providers=['CPUExecutionProvider'])
         self.input = self.session.get_inputs()[0]
         self.height, self.width = self.input.shape[2:]
-        self.names = ast.literal_eval(self.session.get_modelmeta().custom_metadata_map['names'])
+        self.names = _class_names(path, self.session)
         shape = self.session.get_outputs()[0].shape
         if shape[-1] != 6:
             raise ValueError('Expected an ONNX export with embedded NMS and six columns per detection')

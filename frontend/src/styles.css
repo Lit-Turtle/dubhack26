@@ -29,6 +29,13 @@ button:disabled { opacity: .55; cursor: default; }
 .pref-add { margin-top: 12px; max-width: 420px; }
 .pref-add input { margin: 0; }
 .find-recipes { margin-top: 24px; }
+.preview { margin: 0 0 16px; }
+.preview-frame { position: relative; display: inline-block; max-width: 100%; }
+.preview-frame img { display: block; max-width: 100%; height: auto; border-radius: 12px; }
+.preview .box { position: absolute; border: 2px solid #235e42; color: white; background: #235e4222; text-shadow: 0 1px 2px #000; font-size: .7rem; line-height: 1.2; padding: 2px 4px; pointer-events: none; overflow: hidden; }
+.preview .box.uncertain { border-color: #ac6400; border-style: dashed; background: #ac640022; }
+.preview figcaption { color: #526455; font-size: .9rem; margin-top: 8px; }
+.photo-status { margin: 0 0 16px; color: #235e42; font-weight: 600; }
 footer { margin-top: 28px; color: #526455; font-size: .9rem; }
 
 .flipbook-page { min-height: 100vh; max-width: 920px; margin: auto; padding: 28px 22px 48px; text-align: center; }

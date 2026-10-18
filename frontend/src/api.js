@@ -18,8 +18,8 @@ async function request(path, options) {
 }
 
 export function detectIngredients(file) {
-  if (file.size > 4 * 1024 * 1024) {
-    throw new Error('Choose a photo smaller than 4 MB for upload.');
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Choose a photo smaller than 10 MB for upload.');
   }
   const body = new FormData();
   body.append('image', file);

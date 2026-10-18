@@ -85,6 +85,7 @@ class Detection(BaseModel):
     label: str
     confidence: float = Field(ge=0, le=1)
     box: tuple[float, float, float, float]  # pixel coordinates: x1, y1, x2, y2
+    uncertain: bool = False
 
 
 class DetectionResponse(BaseModel):

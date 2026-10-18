@@ -101,9 +101,10 @@ def test_detect_endpoint_with_mocked_yolo(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["detections"] == [
-        {"label": "broccoli", "confidence": 0.91, "box": [10.0, 20.0, 110.0, 120.0]}
+        {"label": "broccoli", "confidence": 0.91, "box": [10.0, 20.0, 110.0, 120.0], "uncertain": False}
     ]
     assert "broccoli" in body["message"]
+    assert "30-ingredient" in body["message"]
 
 
 def test_detect_rejects_invalid_image_bytes():
@@ -120,3 +121,69 @@ def test_detect_rejects_invalid_image_bytes():
 
 def test_detect_rejects_bad_mime():
     assert client.post("/detect", files={"image": ("x.txt", b"text", "text/plain")}).status_code == 415
+
+
+def test_detect_drops_low_confidence_guesses(monkeypatch):
+    detection_module._detector.cache_clear()
+
+    class _SoftBox(_FakeBox):
+        conf = [0.12]
+
+    class _SoftResult(_FakeResult):
+        boxes = [_SoftBox()]
+
+    class _FakeDetector:
+        def predict(self, *args, **kwargs):
+            return [_SoftResult()]
+
+    monkeypatch.setattr(detection_module, "_detector", lambda: _FakeDetector())
+    body = client.post("/detect", files={"image": ("pantry.png", TINY_PNG, "image/png")}).json()
+    assert body["detections"] == []
+
+
+def test_detect_keeps_higher_score_when_boxes_overlap(monkeypatch):
+    detection_module._detector.cache_clear()
+
+    class _LettuceBox:
+        cls = [6]
+        conf = [0.82]
+
+        @property
+        def xyxy(self):
+            return [_FakeTensor([10.0, 10.0, 110.0, 110.0])]
+
+    class _SpinachBox:
+        cls = [5]
+        conf = [0.51]
+
+        @property
+        def xyxy(self):
+            return [_FakeTensor([20.0, 20.0, 120.0, 120.0])]
+
+    class _OverlapResult:
+        names = {5: "spinach", 6: "lettuce"}
+        boxes = [_SpinachBox(), _LettuceBox()]
+        path = ""
+        save_dir = None
+
+    class _FakeDetector:
+        def predict(self, *args, **kwargs):
+            return [_OverlapResult()]
+
+    monkeypatch.setattr(detection_module, "_detector", lambda: _FakeDetector())
+    body = client.post("/detect", files={"image": ("pantry.png", TINY_PNG, "image/png")}).json()
+    assert [item["label"] for item in body["detections"]] == ["lettuce"]
+
+
+def test_detect_accepts_jpeg_alias_and_octet_stream(monkeypatch):
+    detection_module._detector.cache_clear()
+
+    class _FakeDetector:
+        def predict(self, *args, **kwargs):
+            return [_FakeResult()]
+
+    monkeypatch.setattr(detection_module, "_detector", lambda: _FakeDetector())
+    for mime in ("image/jpg", "application/octet-stream"):
+        response = client.post("/detect", files={"image": ("pantry.png", TINY_PNG, mime)})
+        assert response.status_code == 200, mime
+        assert response.json()["detections"][0]["label"] == "broccoli"
