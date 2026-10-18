@@ -1,4 +1,4 @@
-# PantryPlay
+# Pic A Dish
 
 DubHacks ’26 starter: confirm pantry ingredients and find meals with the least extra shopping.
 
