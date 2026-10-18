@@ -43,6 +43,14 @@ function toggleValue(values, value) {
   return values.includes(value) ? values.filter(item => item !== value) : [...values, value];
 }
 
+function formatRecipeNotice(message) {
+  if (!message) return '';
+  return message
+    .replace(/^Recipes generated with Backboard,?\s*/i, '')
+    .replace(/\s*ranked by least extra shopping\.?\s*$/i, '')
+    .trim();
+}
+
 function ChipGroup({ title, hint, options, selected, onToggle, multiple = true }) {
   return (
     <fieldset className="pref-group">
@@ -74,7 +82,8 @@ export default function App() {
   const [customPref, setCustomPref] = useState('');
   const [recipes, setRecipes] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [notice, setNotice] = useState('');
+  const [photoStatus, setPhotoStatus] = useState('');
+  const [recipeStatus, setRecipeStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);
   const [detecting, setDetecting] = useState(false);
@@ -91,7 +100,7 @@ export default function App() {
     if (!file || busy) return;
     setBusy(true);
     setDetecting(true);
-    setNotice('Analyzing your photo…');
+    setPhotoStatus('Analyzing your photo…');
     const previewUrl = URL.createObjectURL(file);
     setPreview(previous => {
       if (previous?.url) URL.revokeObjectURL(previous.url);
@@ -106,9 +115,9 @@ export default function App() {
         setIngredients(previous => [...new Set([...previous, ...labels])]);
         setRecipes([]);
       }
-      setNotice(result.message);
+      setPhotoStatus(result.message);
     } catch (error) {
-      setNotice(error.message);
+      setPhotoStatus(error.message);
     } finally {
       setBusy(false);
       setDetecting(false);
@@ -132,7 +141,7 @@ export default function App() {
 
   async function generate(event) {
     event.preventDefault();
-    setBusy(true); setNotice(''); setRecipes([]);
+    setBusy(true); setRecipeStatus(''); setRecipes([]);
     try {
       const result = await getRecipes({
         ingredients,
@@ -146,8 +155,8 @@ export default function App() {
       });
       setRecipes(result.recipes);
       setSelected(null);
-      setNotice(result.message);
-    } catch (error) { setNotice(error.message); }
+      setRecipeStatus(formatRecipeNotice(result.message));
+    } catch (error) { setRecipeStatus(error.message); }
     finally { setBusy(false); }
   }
 
@@ -173,9 +182,9 @@ export default function App() {
         </div>
         <figcaption>{preview.name}{detecting ? ' · detecting…' : ` · ${preview.detections.length} box(es)`}</figcaption>
       </figure>}
-      {notice ? <p className="photo-status" role="status">{notice}</p> : null}
-      <h3>Confirmed pantry</h3>
-      {ingredients.length === 0 && <p>Your pantry is empty. Upload a photo or add an ingredient below.</p>}
+      {photoStatus ? <p className="photo-status" role="status">{photoStatus}</p> : null}
+      <h3>Added food</h3>
+      {ingredients.length === 0 && <p>No food added yet. Upload a photo or add an ingredient below.</p>}
       <ul className="pantry">{ingredients.map((ingredient, index) => <li key={index}>
         <input aria-label={`Ingredient ${index + 1}`} value={ingredient} disabled={busy} maxLength={80} onChange={event => { setIngredients(items => items.map((item, i) => i === index ? event.target.value : item)); setRecipes([]); }} />
         <button type="button" disabled={busy} aria-label={`Remove ${ingredient}`} onClick={() => { setIngredients(items => items.filter((_, i) => i !== index)); setRecipes([]); }}>Remove</button>
@@ -212,7 +221,7 @@ export default function App() {
       </div>
       <button className="find-recipes" disabled={busy || !ingredients.some(item => item.trim())}>{busy ? 'Working…' : 'Find recipes'}</button>
     </form></section>
-    {notice && recipes.length ? <p className="photo-status">{notice}</p> : null}
+    {recipeStatus && recipes.length ? <p className="photo-status">{recipeStatus}</p> : null}
     <div className="recipes">{recipes.map(recipe => <article key={recipe.name}><h2>{recipe.name}</h2><p>{recipe.estimated_minutes} minutes · {recipe.servings} servings</p>
       <h3>Shopping list</h3>
       {recipe.missing_ingredients.length
