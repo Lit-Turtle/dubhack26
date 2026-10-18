@@ -1,0 +1,138 @@
+{
+  "count": 10,
+  "covered_ingredients": [
+    "apple",
+    "banana",
+    "beans",
+    "beef",
+    "bread",
+    "broccoli",
+    "butter",
+    "cabbage",
+    "carrot",
+    "cheese",
+    "chicken",
+    "corn",
+    "cucumber",
+    "egg",
+    "eggplant",
+    "garlic",
+    "lemon",
+    "milk",
+    "mushroom",
+    "onion",
+    "pepper",
+    "pork",
+    "potato",
+    "rice",
+    "spinach",
+    "tomato"
+  ],
+  "photos": [
+    {
+      "file": "01-onion-potato-corn-chicken-beef.jpg",
+      "ingredients": [
+        "onion",
+        "potato",
+        "corn",
+        "chicken",
+        "beef"
+      ],
+      "split": "test",
+      "boxes": 5
+    },
+    {
+      "file": "02-tomato-carrot-spinach-cucumber-cheese.jpg",
+      "ingredients": [
+        "tomato",
+        "carrot",
+        "spinach",
+        "cucumber",
+        "cheese"
+      ],
+      "split": "val",
+      "boxes": 7
+    },
+    {
+      "file": "03-milk-bread-lemon-beans.jpg",
+      "ingredients": [
+        "milk",
+        "bread",
+        "lemon",
+        "beans"
+      ],
+      "split": "test",
+      "boxes": 4
+    },
+    {
+      "file": "04-pepper-garlic-apple.jpg",
+      "ingredients": [
+        "pepper",
+        "garlic",
+        "apple"
+      ],
+      "split": "val",
+      "boxes": 3
+    },
+    {
+      "file": "05-mushroom-egg-pork.jpg",
+      "ingredients": [
+        "mushroom",
+        "egg",
+        "pork"
+      ],
+      "split": "val",
+      "boxes": 4
+    },
+    {
+      "file": "06-broccoli-cheese-banana.jpg",
+      "ingredients": [
+        "broccoli",
+        "cheese",
+        "banana"
+      ],
+      "split": "test",
+      "boxes": 6
+    },
+    {
+      "file": "07-egg-butter.jpg",
+      "ingredients": [
+        "egg",
+        "butter"
+      ],
+      "split": "test",
+      "boxes": 2
+    },
+    {
+      "file": "08-rice-beans.jpg",
+      "ingredients": [
+        "rice",
+        "beans"
+      ],
+      "split": "val",
+      "boxes": 3
+    },
+    {
+      "file": "09-tomato-mushroom-eggplant.jpg",
+      "ingredients": [
+        "tomato",
+        "mushroom",
+        "eggplant"
+      ],
+      "split": "test",
+      "boxes": 15
+    },
+    {
+      "file": "10-onion-cabbage-garlic-egg.jpg",
+      "ingredients": [
+        "onion",
+        "cabbage",
+        "garlic",
+        "egg"
+      ],
+      "split": "val",
+      "boxes": 6
+    }
+  ],
+  "note": "Use these JPEG/PNG files on http://localhost:5173 for the demo. They contain 2-5 of the 30 trained ingredients."
+}

@@ -138,6 +138,129 @@ def prepare(source, output, train_per_class=150):
     return dataset
 
 
+def _label_ids(path: Path) -> list[int]:
+    return [int(row.split()[0]) for row in path.read_text().splitlines() if row.strip()]
+
+
+def _link_or_copy(source: Path, dest: Path):
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        return
+    try:
+        os.link(source, dest)
+    except OSError:
+        shutil.copy2(source, dest)
+
+
+def boost_multi(source: Path, output: Path, extra_copies: int = 3):
+    """Reuse a prepared food30 dataset and oversample images that already contain 2+ classes."""
+    import yaml
+    source = source.resolve()
+    output = output.resolve()
+    if output.exists():
+        raise FileExistsError(f'Refusing to overwrite dataset: {output}')
+    if extra_copies < 1:
+        raise ValueError('extra_copies must be at least 1')
+    cfg = yaml.safe_load((source / 'dataset.yaml').read_text())
+    names = cfg['names']
+    if isinstance(names, list):
+        names = dict(enumerate(names))
+    if list(names.values()) != INGREDIENTS:
+        raise ValueError('Source dataset class names must match the 30-ingredient list')
+    output.mkdir(parents=True)
+    report = {
+        'source': str(source),
+        'ingredients': INGREDIENTS,
+        'extra_copies_of_multi_images': extra_copies,
+        'note': 'Val/test are unchanged. Train keeps every original image and repeats multi-ingredient photos.',
+        'splits': {},
+    }
+    for split in ['train', 'val', 'test']:
+        images = sorted(
+            p for p in (source / 'images' / split).iterdir()
+            if p.suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+        )
+        counts = Counter()
+        boxes = Counter()
+        multi = 0
+        for image in images:
+            label = source / 'labels' / split / (image.stem + '.txt')
+            ids = _label_ids(label) if label.exists() else []
+            uniq = set(ids)
+            counts.update(uniq)
+            boxes.update(ids)
+            if len(uniq) >= 2:
+                multi += 1
+            copies = extra_copies if split == 'train' and len(uniq) >= 2 else 1
+            for copy_index in range(copies):
+                suffix = image.suffix.lower()
+                stem = image.stem if copy_index == 0 else f'{image.stem}-multi{copy_index}'
+                _link_or_copy(image, output / 'images' / split / (stem + suffix))
+                label_dest = output / 'labels' / split / (stem + '.txt')
+                label_dest.parent.mkdir(parents=True, exist_ok=True)
+                label_dest.write_text(label.read_text() if label.exists() else '')
+        report['splits'][split] = {
+            'images': len(images) + (multi * (extra_copies - 1) if split == 'train' else 0),
+            'source_images': len(images),
+            'multi_ingredient_images': multi,
+            'images_per_class': {name: counts[index] for index, name in enumerate(INGREDIENTS)},
+            'boxes_per_class': {name: boxes[index] for index, name in enumerate(INGREDIENTS)},
+        }
+        if not images or any(counts[index] == 0 for index in range(30)):
+            raise ValueError(f'{split} lacks examples for one or more target classes')
+    dataset = output / 'dataset.yaml'
+    dataset.write_text(yaml.safe_dump({
+        'path': str(output),
+        'train': 'images/train',
+        'val': 'images/val',
+        'test': 'images/test',
+        'names': dict(enumerate(INGREDIENTS)),
+    }, sort_keys=False))
+    write_json(output / 'preparation-report.json', report)
+    print(json.dumps(report, indent=2), flush=True)
+    return dataset
+
+
+def export_demo_combos(source: Path, output: Path, count: int = 10):
+    """Copy diverse 2-5 ingredient photos for a live demo."""
+    source = source.resolve()
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    candidates = []
+    for split in ['test', 'val']:
+        for label in (source / 'labels' / split).glob('*.txt'):
+            ids = _label_ids(label)
+            names = [INGREDIENTS[i] for i in sorted(set(ids))]
+            if 2 <= len(names) <= 5:
+                image = next((source / 'images' / split / (label.stem + ext)
+                              for ext in ('.jpg', '.jpeg', '.png', '.webp')
+                              if (source / 'images' / split / (label.stem + ext)).exists()), None)
+                if image:
+                    candidates.append({'split': split, 'image': image, 'names': names, 'boxes': len(ids)})
+    if len(candidates) < count:
+        raise ValueError(f'Need at least {count} multi-ingredient photos, found {len(candidates)}')
+    selected = []
+    covered = set()
+    remaining = candidates[:]
+    while remaining and len(selected) < count:
+        remaining.sort(key=lambda item: (len(set(item['names']) - covered), -len(item['names']), -item['boxes']), reverse=True)
+        pick = remaining.pop(0)
+        selected.append(pick)
+        covered.update(pick['names'])
+    manifest = []
+    for index, item in enumerate(selected, start=1):
+        name = f"{index:02d}-{'-'.join(item['names'])}{item['image'].suffix.lower()}"
+        shutil.copy2(item['image'], output / name)
+        manifest.append({'file': name, 'ingredients': item['names'], 'split': item['split'], 'boxes': item['boxes']})
+    write_json(output / 'manifest.json', {
+        'count': len(manifest),
+        'covered_ingredients': sorted(covered),
+        'photos': manifest,
+        'note': 'Use these JPEG/PNG files on http://localhost:5173 for the demo. They contain 2-5 of the 30 trained ingredients.',
+    })
+    return manifest
+
+
 def class_scores(metrics):
     scores = {name: 0.0 for name in INGREDIENTS}
     for index, ap in zip(metrics.box.ap_class_index, metrics.box.ap50):
@@ -145,7 +268,7 @@ def class_scores(metrics):
     return scores
 
 
-def train(dataset, model_path, hours, target):
+def train(dataset, model_path, hours, target, mosaic=0.2, mixup=0.0, freeze=10, close_mosaic=0):
     import torch
     from ultralytics import YOLO
     torch.set_num_threads(2)
@@ -157,6 +280,7 @@ def train(dataset, model_path, hours, target):
     state = {'status': 'starting', 'target_AP50_each': target, 'hours_limit': hours,
              'dataset': str(dataset), 'starting_model': str(model_path), 'run': str(run),
              'deployed': False, 'target_reached': False,
+             'mosaic': mosaic, 'mixup': mixup, 'freeze': freeze, 'close_mosaic': close_mosaic,
              'test_images_per_class': prep['splits']['test']['images_per_class']}
     write_json(status_path, state)
     reserve = min(900, hours * 3600 * 0.25)
@@ -195,7 +319,7 @@ def train(dataset, model_path, hours, target):
             trainer.stop = True
 
     def timeout_handler(signum, frame):
-        raise TimeoutError('Two-hour run budget exhausted')
+        raise TimeoutError(f'{hours}-hour run budget exhausted')
 
     previous = signal.signal(signal.SIGALRM, timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, hours * 3600)
@@ -206,10 +330,10 @@ def train(dataset, model_path, hours, target):
         model.add_callback('on_fit_epoch_end', update)
         model.add_callback('on_train_batch_end', check_time)
         model.train(data=str(dataset), epochs=100, time=max(0.01, (training_deadline-time.monotonic())/3600),
-                    imgsz=416, batch=4, device='cpu', workers=0, freeze=10,
-                    optimizer='AdamW', lr0=0.0002, warmup_epochs=1.0, warmup_bias_lr=0.0002,
+                    imgsz=416, batch=4, device='cpu', workers=0, freeze=freeze,
+                    optimizer='AdamW', lr0=0.00015, warmup_epochs=1.0, warmup_bias_lr=0.00015,
                     cos_lr=True, patience=8, seed=42, deterministic=True, cls_remap=True,
-                    amp=False, cache=False, plots=False, mosaic=0.2, mixup=0.0, close_mosaic=0,
+                    amp=False, cache=False, plots=False, mosaic=mosaic, mixup=mixup, close_mosaic=close_mosaic,
                     project=str(run), name='training', save=True)
         if not target_best.exists():
             raise RuntimeError('No candidate checkpoint was saved')
@@ -254,12 +378,31 @@ def main():
     parser.add_argument('--target', type=float, default=0.8)
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--prepared', action='store_true', help='Use the previously prepared dataset without changing splits')
+    parser.add_argument('--boost-multi', action='store_true', help='Oversample existing multi-ingredient food30 photos into --output')
+    parser.add_argument('--food30', type=Path, default=ROOT/'datasets/food30', help='Prepared food30 dataset used by --boost-multi and --export-demo')
+    parser.add_argument('--multi-copies', type=int, default=3)
+    parser.add_argument('--mosaic', type=float, default=0.2)
+    parser.add_argument('--mixup', type=float, default=0.0)
+    parser.add_argument('--freeze', type=int, default=10)
+    parser.add_argument('--close-mosaic', type=int, default=0)
+    parser.add_argument('--export-demo', type=Path, help='Copy diverse 2-5 ingredient photos for a live demo')
+    parser.add_argument('--demo-count', type=int, default=10)
     args = parser.parse_args()
-    if args.hours <= 0 or not 0 < args.target <= 1 or args.train_per_class <= 0:
-        parser.error('Hours, target, and training sample limit must be positive; target must be <= 1')
-    dataset = args.output.resolve()/'dataset.yaml' if args.prepared else prepare(args.source.resolve(), args.output.resolve(), args.train_per_class)
+    if args.hours <= 0 or not 0 < args.target <= 1 or args.train_per_class <= 0 or args.multi_copies <= 0:
+        parser.error('Hours, target, and sample limits must be positive; target must be <= 1')
+    if args.export_demo:
+        export_demo_combos(args.food30.resolve(), args.export_demo.resolve(), args.demo_count)
+        if not args.boost_multi and not args.prepared:
+            return
+    if args.boost_multi:
+        dataset = boost_multi(args.food30.resolve(), args.output.resolve(), args.multi_copies)
+    elif args.prepared:
+        dataset = args.output.resolve()/'dataset.yaml'
+    else:
+        dataset = prepare(args.source.resolve(), args.output.resolve(), args.train_per_class)
     if not args.prepare_only:
-        train(dataset, args.model.resolve(), args.hours, args.target)
+        train(dataset, args.model.resolve(), args.hours, args.target,
+              mosaic=args.mosaic, mixup=args.mixup, freeze=args.freeze, close_mosaic=args.close_mosaic)
 
 
 if __name__ == '__main__':
