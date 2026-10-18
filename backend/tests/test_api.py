@@ -30,3 +30,26 @@ def test_empty_pantry():
     assert client.post("/recipes", json={"ingredients": [" "]}).status_code == 422
 
 
+def test_egg_allergy_filters_sample_recipes():
+    recipes = client.post("/recipes", json={
+        "ingredients": ["rice", "egg", "carrot", "broccoli"],
+        "allergies": ["eggs"],
+    }).json()["recipes"]
+    names = {recipe["name"] for recipe in recipes}
+    assert "Vegetable Omelet" not in names
+    assert "Vegetable Fried Rice" not in names
+    assert "Broccoli Rice Bowl" in names
+
+
+def test_unknown_preference_is_rejected():
+    assert client.post("/recipes", json={"ingredients": ["rice"], "diet": "carnivore"}).status_code == 422
+
+
+def test_custom_other_preference_is_accepted():
+    response = client.post("/recipes", json={
+        "ingredients": ["rice", "carrot", "broccoli"],
+        "other_preferences": ["no spicy food", "dairy free"],
+    })
+    assert response.status_code == 200
+
+
