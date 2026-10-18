@@ -4,6 +4,14 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_health_and_api_prefix():
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/api/health").json() == {"status": "ok"}
+    prefixed = client.post("/api/recipes", json={"ingredients": ["apple", "banana"]})
+    assert prefixed.status_code == 200
+    assert prefixed.json()["recipes"]
+
+
 def test_missing_ingredients_and_servings():
     response = client.post("/recipes", json={"ingredients": [" RICE ", "egg", "carrot", "broccoli"], "servings": 4})
     assert response.status_code == 200

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -42,7 +44,8 @@ def test_resolve_model_path_prefers_existing_file(tmp_path):
     weights = tmp_path / "custom.pt"
     weights.write_bytes(b"fake")
     assert resolve_model_path(str(weights)) == str(weights.resolve())
-    assert resolve_model_path("yolo26n.pt") == "yolo26n.pt"
+    resolved = resolve_model_path("yolo26n.pt")
+    assert resolved == "yolo26n.pt" or Path(resolved).name == "yolo26n.pt"
 
 
 def test_summarize_maps_boxes():

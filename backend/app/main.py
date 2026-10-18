@@ -1,24 +1,19 @@
 import os
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import DetectionResponse, RecipeRequest, RecipeResponse
 from app.services.detection import detect_food
 from app.services.backboard import generate_recipes
 
-app = FastAPI(title="PantryPlay API", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")],
-    allow_methods=["GET", "POST"], allow_headers=["Content-Type"],
-)
+router = APIRouter()
 
 
-@app.get("/health")
+@router.get("/health")
 def health():
     return {"status": "ok"}
 
 
-@app.post("/detect", response_model=DetectionResponse)
+@router.post("/detect", response_model=DetectionResponse)
 async def detect(image: UploadFile = File(...)):
     try:
         if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
@@ -33,8 +28,29 @@ async def detect(image: UploadFile = File(...)):
         await image.close()
 
 
-@app.post("/recipes", response_model=RecipeResponse)
+@router.post("/recipes", response_model=RecipeResponse)
 def recipes(request: RecipeRequest):
     if not request.ingredients:
         raise HTTPException(422, "Enter at least one ingredient")
     return generate_recipes(request)
+
+
+def _cors_origins() -> list[str]:
+    origins = {os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")}
+    if os.getenv("VERCEL_URL"):
+        origins.add(f"https://{os.getenv('VERCEL_URL')}")
+    if os.getenv("VERCEL_PROJECT_PRODUCTION_URL"):
+        origins.add(f"https://{os.getenv('VERCEL_PROJECT_PRODUCTION_URL')}")
+    return sorted(origins)
+
+
+app = FastAPI(title="PantryPlay API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+app.include_router(router)
+app.include_router(router, prefix="/api")

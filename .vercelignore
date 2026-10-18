@@ -1,0 +1,7 @@
+**/.venv
+**/__pycache__
+**/node_modules
+backend/datasets
+backend/yolo26n.pt
+backend/weights
+frontend/dist

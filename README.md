@@ -87,6 +87,28 @@ Open http://localhost:5173. API documentation: http://localhost:8000/docs. Stop 
 
 To enable Backboard, edit `backend\.env` and follow [Enable Backboard recipes](#enable-backboard-recipes) below. After saving, stop and restart the backend with the same `python.exe -m uvicorn` command above.
 
+## Deploy on Vercel
+
+The repo root `vercel.json` deploys the Vite frontend and FastAPI backend as one project. Public URLs:
+
+- `/` — frontend
+- `/api/health`, `/api/recipes`, `/api/detect` — backend
+
+1. Import [this GitHub repo](https://github.com/Lit-Turtle/dubhack26) into [Vercel](https://vercel.com/new). Keep the project root at the repository root.
+2. In the Vercel project, add these environment variables (Production and Preview):
+
+```dotenv
+BACKBOARD_API_KEY=your_new_key_here
+BACKBOARD_PROVIDER=openrouter
+BACKBOARD_MODEL=openai/gpt-4o-mini
+FRONTEND_ORIGIN=https://your-app.vercel.app
+```
+
+3. Deploy. After the first deploy, set `FRONTEND_ORIGIN` to the real `*.vercel.app` URL (or your custom domain) and redeploy.
+4. Optional custom domain: Project → Settings → Domains.
+
+Do not add `requirements-yolo.txt` or PyTorch on Vercel. Those packages are too large for a serverless function, so photo detection will fall back to manual ingredients. Recipe generation uses Backboard plus the sample catalog.
+
 ## Verify
 
 ### macOS / Linux
