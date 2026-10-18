@@ -2,18 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "backend": {
-      "root": "backend/",
+      "root": "backend",
       "framework": "fastapi",
-      "entrypoint": "app.main:app",
-      "installCommand": "pip install -r requirements.txt",
-      "functions": {
-        "app/main.py": {
-          "maxDuration": 60
-        }
-      }
+      "entrypoint": "app.main:app"
     },
     "frontend": {
-      "root": "frontend/",
+      "root": "frontend",
       "framework": "vite"
     }
   },
