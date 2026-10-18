@@ -2,15 +2,17 @@ import json
 from pathlib import Path
 from app.schemas import Ingredient, Recipe, RecipeRequest
 
-CATALOG = json.loads((Path(__file__).resolve().parents[1] / "data" / "recipes.json").read_text())
+CATALOG_PATH = Path(__file__).resolve().parents[1] / "data" / "recipes.json"
+
 
 
 def suggest_recipes(request: RecipeRequest) -> list[Recipe]:
     """Deterministic starter. Replace catalog lookup with validated LLM output later."""
+    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
     pantry = set(request.ingredients)
     excluded = set(request.exclusions)
     results = []
-    for item in CATALOG:
+    for item in catalog:
         names = [ingredient["name"] for ingredient in item["ingredients"]]
         if item["estimated_minutes"] > request.max_minutes:
             continue

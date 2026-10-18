@@ -45,6 +45,14 @@ def test_unknown_preference_is_rejected():
     assert client.post("/recipes", json={"ingredients": ["rice"], "diet": "carnivore"}).status_code == 422
 
 
+def test_apple_banana_has_sample_recipes():
+    result = client.post("/recipes", json={"ingredients": ["apple", "banana"]}).json()
+    names = {recipe["name"] for recipe in result["recipes"]}
+    assert "Apple Banana Smoothie" in names
+    assert len(result["recipes"]) == 3
+    assert all({"apple", "banana"} & set(recipe["ingredients_used"]) for recipe in result["recipes"])
+
+
 def test_custom_other_preference_is_accepted():
     response = client.post("/recipes", json={
         "ingredients": ["rice", "carrot", "broccoli"],

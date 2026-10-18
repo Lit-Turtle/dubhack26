@@ -117,5 +117,52 @@
       "Add cooked rice and salt. Stir until steaming hot throughout.",
       "Divide between bowls and serve."
     ]
+  },
+  {
+    "name": "Apple Banana Smoothie",
+    "estimated_minutes": 8,
+    "vegetarian": true,
+    "ingredients": [
+      {"name": "apple", "quantity": 1, "unit": ""},
+      {"name": "banana", "quantity": 1, "unit": ""},
+      {"name": "yogurt", "quantity": 0.5, "unit": "cup"}
+    ],
+    "steps": [
+      "Core the apple and slice it. Peel the banana.",
+      "Add the fruit and yogurt to a blender with a splash of cold water.",
+      "Blend until smooth and pour into glasses."
+    ]
+  },
+  {
+    "name": "Fresh Apple Banana Bowl",
+    "estimated_minutes": 10,
+    "vegetarian": true,
+    "ingredients": [
+      {"name": "apple", "quantity": 1, "unit": ""},
+      {"name": "banana", "quantity": 1, "unit": ""},
+      {"name": "lemon", "quantity": 0.5, "unit": ""}
+    ],
+    "steps": [
+      "Dice the apple and slice the banana into a bowl.",
+      "Squeeze lemon over the fruit so it stays bright.",
+      "Toss gently and serve immediately."
+    ]
+  },
+  {
+    "name": "Warm Cinnamon Apple Banana",
+    "estimated_minutes": 12,
+    "vegetarian": true,
+    "ingredients": [
+      {"name": "apple", "quantity": 1, "unit": ""},
+      {"name": "banana", "quantity": 1, "unit": ""},
+      {"name": "oil", "quantity": 1, "unit": "tsp"},
+      {"name": "cinnamon", "quantity": 0.25, "unit": "tsp"}
+    ],
+    "steps": [
+      "Core and slice the apple. Slice the banana.",
+      "Warm the oil in a skillet over medium heat.",
+      "Cook the apple until just tender, about 5 minutes. Add the banana and cinnamon.",
+      "Cook 1 to 2 minutes more and serve warm."
+    ]
   }
 ]
