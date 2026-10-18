@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 runs/
 backend/models/runs/
+backend/datasets/
 *.pt
 *.onnx
 *.engine

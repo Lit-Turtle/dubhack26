@@ -1,5 +1,6 @@
 """Backboard REST integration. Credentials and upstream details stay server-side."""
 import json
+import logging
 import os
 from typing import Annotated
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel, Field, StringConstraints
 from app.schemas import Ingredient, Recipe, RecipeRequest, RecipeResponse
 from app.services.preferences import apply_preferences
 from app.services.recipes import suggest_recipes
+
+logger = logging.getLogger("uvicorn.error")
 
 API_URL = "https://app.backboard.io/api/threads/messages"
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
@@ -50,27 +53,95 @@ name (string), estimated_minutes (integer), servings (integer), vegetarian
 steps (array of strings)."""
 
 
-def validate_recipes(content: str, request: RecipeRequest) -> list[Recipe]:
-    generated = GeneratedRecipes.model_validate_json(content)
+def extract_recipe_json(content) -> str:
+    if isinstance(content, list):
+        return json.dumps({"recipes": content})
+    if isinstance(content, dict):
+        if "recipes" not in content:
+            for value in content.values():
+                if isinstance(value, list):
+                    return json.dumps({"recipes": value})
+        return json.dumps(content)
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Backboard returned no recipe text")
+    text = content.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    parsed = json.loads(text)
+    if isinstance(parsed, list):
+        return json.dumps({"recipes": parsed})
+    if isinstance(parsed, dict) and "recipes" not in parsed:
+        for value in parsed.values():
+            if isinstance(value, list):
+                return json.dumps({"recipes": value})
+    return json.dumps(parsed) if isinstance(parsed, dict) else text
+
+
+def pantry_prompt(request: RecipeRequest) -> str:
+    return json.dumps({
+        "pantry": request.ingredients,
+        "max_minutes": request.max_minutes,
+        "servings": request.servings,
+        "diet": request.diet or None,
+        "allergies": request.allergies,
+        "nutrition_goals": request.nutrition_goals,
+        "other_preferences": request.other_preferences,
+        "vegetarian": request.vegetarian,
+        "do_not_use": request.exclusions,
+    })
+
+
+def validate_recipes(content, request: RecipeRequest) -> list[Recipe]:
+    generated = GeneratedRecipes.model_validate_json(extract_recipe_json(content))
     pantry = set(request.ingredients)
     excluded = set(request.exclusions)
     results = []
     for item in generated.recipes:
         names = [ingredient.name.lower() for ingredient in item.ingredients]
-        if (item.servings != request.servings or item.estimated_minutes > request.max_minutes
+        if (item.estimated_minutes > request.max_minutes
                 or (request.vegetarian and not item.vegetarian)
                 or excluded.intersection(names) or len(names) != len(set(names))
                 or not pantry.intersection(names)):
-            raise ValueError("Generated recipe does not match preferences")
+            continue
         results.append(Recipe(
-            name=item.name, estimated_minutes=item.estimated_minutes, servings=item.servings,
+            name=item.name, estimated_minutes=item.estimated_minutes, servings=request.servings,
             ingredients=[Ingredient(name=ingredient.name.lower(), quantity=ingredient.quantity, unit=ingredient.unit)
                          for ingredient in item.ingredients],
             ingredients_used=[name for name in names if name in pantry],
             missing_ingredients=[name for name in names if name not in pantry],
             steps=item.steps,
         ))
+    if not results:
+        raise ValueError("Generated recipe does not match preferences")
     return sorted(results, key=lambda recipe: (len(recipe.missing_ingredients), -len(recipe.ingredients_used), recipe.estimated_minutes))
+
+
+def _post_backboard(client: httpx.Client, key: str, request: RecipeRequest, *, json_output: bool) -> dict:
+    response = client.post(
+        API_URL,
+        headers={"X-API-Key": key, "Content-Type": "application/json"},
+        json={
+            "content": pantry_prompt(request),
+            "system_prompt": SYSTEM_PROMPT,
+            "llm_provider": os.getenv("BACKBOARD_PROVIDER", "openrouter"),
+            "model_name": os.getenv("BACKBOARD_MODEL", "openai/gpt-4o-mini"),
+            "json_output": json_output,
+            "stream": False,
+            "send_to_llm": "true",
+            "memory": "off",
+            "web_search": "off",
+        },
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Backboard returned an unexpected response")
+    return payload
 
 
 def generate_recipes(request: RecipeRequest) -> RecipeResponse:
@@ -79,25 +150,17 @@ def generate_recipes(request: RecipeRequest) -> RecipeResponse:
     reason = "Backboard is not configured."
     if key:
         try:
-            # Fresh conversation for every plan; no shared pantry history or automatic retries.
+            # Fresh conversation for every plan; no shared pantry history.
             with httpx.Client(timeout=httpx.Timeout(60, connect=10)) as client:
-                response = client.post(API_URL, headers={"X-API-Key": key}, json={
-                    "content": request.model_dump_json(),
-                    "system_prompt": SYSTEM_PROMPT,
-                    "llm_provider": os.getenv("BACKBOARD_PROVIDER", "openai"),
-                    "model_name": os.getenv("BACKBOARD_MODEL", "gpt-4o"),
-                    "json_output": True,
-                    "stream": False,
-                    "memory": "off",
-                    "web_search": "off",
-                })
-            response.raise_for_status()
-            payload = response.json()
-            if not isinstance(payload, dict) or payload.get("status") != "COMPLETED":
-                raise ValueError("Backboard did not complete the request")
+                payload = _post_backboard(client, key, request, json_output=True)
+                status = str(payload.get("status", "")).upper()
+                if status == "FAILED":
+                    payload = _post_backboard(client, key, request, json_output=False)
+                    status = str(payload.get("status", "")).upper()
             content = payload.get("content")
-            if not isinstance(content, str):
-                raise ValueError("Backboard returned no recipe text")
+            logger.info("backboard status=%s tokens=%s/%s", status or "missing", payload.get("input_tokens"), payload.get("output_tokens"))
+            if status and status != "COMPLETED":
+                raise ValueError("Backboard did not complete the request")
             matches = validate_recipes(content, request)
             return RecipeResponse(recipes=matches, message="Recipes generated with Backboard, ranked by least extra shopping.")
         except httpx.HTTPStatusError as error:
@@ -111,8 +174,9 @@ def generate_recipes(request: RecipeRequest) -> RecipeResponse:
             reason = "Backboard timed out."
         except httpx.RequestError:
             reason = "Could not reach Backboard."
-        except (ValueError, TypeError):
-            reason = "Backboard returned recipes that could not be validated."
+        except (ValueError, TypeError) as error:
+            logger.warning("backboard parse failed: %s", type(error).__name__)
+            reason = "Backboard did not generate usable recipes."
     matches = suggest_recipes(request)
     # Never forward upstream response bodies, credentials, or exception text to the browser.
     message = f"{reason} Showing {len(matches)} sample recipe(s)." if matches else f"{reason} No sample recipes match your preferences."

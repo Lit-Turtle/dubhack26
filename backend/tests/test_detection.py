@@ -67,6 +67,21 @@ def test_predict_filters_to_food_classes():
     assert detector.model.kwargs["classes"] == [2, 3]
 
 
+def test_predict_skips_coco_filter_for_custom_food_model():
+    class _FakeModel:
+        names = {0: "tomato", 1: "onion", 2: "banana", 3: "chicken"}
+
+        def predict(self, **kwargs):
+            self.kwargs = kwargs
+            return ["result"]
+
+    detector = YoloDetector.__new__(YoloDetector)
+    detector.model = _FakeModel()
+
+    assert detector.predict("image.jpg", save=False) == ["result"]
+    assert detector.model.kwargs["classes"] is None
+
+
 def test_detect_endpoint_with_mocked_yolo(monkeypatch):
     detection_module._detector.cache_clear()
 

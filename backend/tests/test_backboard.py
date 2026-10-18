@@ -37,9 +37,10 @@ def test_api_uses_backboard_and_recomputes_missing(monkeypatch):
         assert data['llm_provider'] == 'test-provider'
         assert data['model_name'] == 'test-model'
         assert data['memory'] == data['web_search'] == 'off'
+        assert data['send_to_llm'] == 'true'
         assert data['json_output'] is True
         assert 'thread_id' not in data
-        return httpx.Response(200, json={'status': 'COMPLETED', 'content': json.dumps({'recipes': [recipe(missing_ingredients=[])]})})
+        return httpx.Response(200, json={'status': 'completed', 'content': {'recipes': [recipe(missing_ingredients=[])]}})
     mock_api(monkeypatch, handler)
     response = client.post('/recipes', json={'ingredients': ['rice']})
     assert response.status_code == 200
@@ -51,12 +52,35 @@ def test_api_uses_backboard_and_recomputes_missing(monkeypatch):
 
 
 @pytest.mark.parametrize('changes', [
-    {'servings': 4}, {'estimated_minutes': 45}, {'vegetarian': False},
+    {'estimated_minutes': 45}, {'vegetarian': False},
     {'steps': []}, {'ingredients': [{'name': 'rice', 'quantity': -1, 'unit': 'cup'}]},
 ])
 def test_rejects_invalid_or_nonmatching_recipes(changes):
     with pytest.raises(ValueError):
         backboard.validate_recipes(json.dumps({'recipes': [recipe(**changes)]}), RecipeRequest(ingredients=['rice'], vegetarian=True))
+
+
+def test_generated_servings_are_normalized():
+    recipes = backboard.validate_recipes(
+        json.dumps({'recipes': [recipe(servings=4)]}),
+        RecipeRequest(ingredients=['rice'], servings=2, vegetarian=True),
+    )
+    assert recipes[0].servings == 2
+
+
+def test_extracts_list_or_fenced_json():
+    request = RecipeRequest(ingredients=['rice'], vegetarian=True)
+    fenced = '```json\n' + json.dumps({'recipes': [recipe()]}) + '\n```'
+    assert backboard.validate_recipes([recipe()], request)[0].name == 'Rice bowl'
+    assert backboard.validate_recipes(fenced, request)[0].name == 'Rice bowl'
+
+
+def test_keeps_valid_recipes_when_one_fails():
+    recipes = backboard.validate_recipes(
+        json.dumps({'recipes': [recipe(estimated_minutes=45), recipe(name='Good rice')]}),
+        RecipeRequest(ingredients=['rice'], vegetarian=True),
+    )
+    assert [item.name for item in recipes] == ['Good rice']
 
 
 def test_exclusions_are_checked():

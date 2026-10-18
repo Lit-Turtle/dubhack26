@@ -16,6 +16,24 @@ FOOD_CLASS_NAMES = {
     "pizza",
     "sandwich",
 }
+# Official COCO checkpoints mix food with people, vehicles, furniture, etc.
+COCO_NONFOOD_HINTS = {
+    "person",
+    "bicycle",
+    "car",
+    "motorcycle",
+    "airplane",
+    "bus",
+    "train",
+    "truck",
+    "boat",
+    "traffic light",
+    "chair",
+    "couch",
+    "bed",
+    "tv",
+    "laptop",
+}
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models"
 
 
@@ -48,19 +66,22 @@ class YoloDetector:
         imgsz: int = 640,
     ) -> list[Any]:
         names = self.model.names
-        name_items = names.items() if isinstance(names, dict) else enumerate(names)
+        name_items = list(names.items()) if isinstance(names, dict) else list(enumerate(names))
         food_classes = [
             class_id
             for class_id, name in name_items
             if str(name).lower() in FOOD_CLASS_NAMES
         ]
+        looks_like_coco = any(str(name).lower() in COCO_NONFOOD_HINTS for _, name in name_items)
+        # A trained ingredients model is already food-only — keep every class.
+        classes = food_classes if looks_like_coco and food_classes else None
         return self.model.predict(
             source=source,
             conf=conf,
             save=save,
             show=show,
             imgsz=imgsz,
-            classes=food_classes,
+            classes=classes,
             verbose=False,
         )
 

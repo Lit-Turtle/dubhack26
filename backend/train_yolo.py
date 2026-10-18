@@ -25,6 +25,8 @@ def main() -> int:
     parser.add_argument("--batch", type=int, default=8, help="Batch size")
     parser.add_argument("--project", default=str(MODELS_DIR / "runs"), help="Output project directory")
     parser.add_argument("--name", default="food", help="Run name under --project")
+    parser.add_argument("--device", default="0", help="CUDA device or cpu")
+    parser.add_argument("--workers", type=int, default=2, help="Dataloader workers")
     args = parser.parse_args()
 
     from ultralytics import YOLO
@@ -42,6 +44,9 @@ def main() -> int:
         batch=args.batch,
         project=args.project,
         name=args.name,
+        device=args.device,
+        workers=args.workers,
+        exist_ok=True,
     )
     print(f"Best weights: {args.project}/{args.name}/weights/best.pt")
     print("Point the API at them with YOLO_MODEL=models/runs/food/weights/best.pt in backend/.env")
